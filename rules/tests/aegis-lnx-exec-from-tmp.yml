@@ -1,0 +1,17 @@
+# Regression cases for aegis-lnx-exec-from-tmp. Events are completed with defaults by the test runner.
+rule: aegis-lnx-exec-from-tmp
+match:
+- process:
+    pid: 2
+    name: x
+    executable: /tmp/.x/x
+- process:
+    pid: 2
+    name: y
+    executable: /dev/shm/y
+no_match:
+- process:
+    pid: 2
+    name: ls
+    executable: /usr/bin/ls
+    command_line: ls /tmp/

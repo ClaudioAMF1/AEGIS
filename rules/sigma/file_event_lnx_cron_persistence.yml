@@ -1,0 +1,26 @@
+title: Cron Configuration Modified
+id: aegis-lnx-cron-file-write
+status: stable
+description: A file in a system or user cron directory was created or modified.
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+author: AEGIS
+tags:
+  - attack.persistence
+  - attack.t1053.003
+logsource:
+  product: linux
+  category: file_event
+detection:
+  selection:
+    TargetFilename|startswith:
+      - /etc/cron.d/
+      - /etc/cron.daily/
+      - /etc/cron.hourly/
+      - /var/spool/cron/
+  crontab:
+    TargetFilename: /etc/crontab
+  condition: selection or crontab
+falsepositives:
+  - Package installation and configuration management
+level: medium

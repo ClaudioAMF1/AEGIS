@@ -1,0 +1,19 @@
+title: Authentication From Known Threat Indicator
+id: aegis-intel-indicator-auth
+status: stable
+description: An authentication attempt originated from an address listed in threat intelligence.
+author: AEGIS
+tags:
+  - attack.credential_access
+  - attack.t1110
+logsource:
+  product: aegis
+  category: authentication
+detection:
+  selection:
+    intel.matched: true
+    action: login_success
+  condition: selection
+falsepositives:
+  - Stale or low-confidence indicators
+level: critical

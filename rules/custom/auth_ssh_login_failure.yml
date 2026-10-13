@@ -1,0 +1,19 @@
+title: SSH Login Failure
+id: aegis-auth-ssh-failure
+name: ssh_login_failure
+status: stable
+description: Failed SSH authentication. Building block for brute-force correlations.
+author: AEGIS
+tags:
+  - attack.credential_access
+  - attack.t1110
+logsource:
+  product: aegis
+  category: authentication
+detection:
+  selection:
+    action: login_failure
+    auth.service: sshd
+  condition: selection
+generate: false
+level: informational

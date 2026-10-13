@@ -1,0 +1,84 @@
+id: baseline-benign
+title: Benign administration baseline (false-positive check)
+description: |
+  Routine administration on lab hosts: package updates, service restarts, deployments and
+  key-based logins from the management network. A healthy rule set produces no alerts here;
+  any alert from this scenario is a false positive worth tuning.
+duration: 60m
+tags: [baseline, false-positive-check]
+expected:
+  alerts_max: 0
+hosts:
+  app:
+    hostname: lab-app-01
+    os: Ubuntu 24.04 LTS
+    ip: [10.20.0.31]
+  ci:
+    hostname: lab-ci-01
+    os: Fedora 40
+    ip: [10.20.0.41]
+steps:
+  - at: 0s
+    event:
+      host: app
+      category: process
+      action: start
+      user: {name: root, uid: 0}
+      process: {ref: sshd, name: sshd, executable: /usr/sbin/sshd, command_line: "/usr/sbin/sshd -D"}
+  - at: 1m
+    repeat: {count: 6, every: 9m, jitter: 1m}
+    event:
+      host: app
+      category: authentication
+      action: login_success
+      user: {name: "{{cycle:ops-admin|release}}"}
+      auth: {method: publickey, outcome: success, source_ip: 10.20.0.5, target_user: "{{cycle:ops-admin|release}}", service: sshd}
+  - at: 2m
+    repeat: {count: 4, every: 14m}
+    event:
+      host: app
+      category: process
+      action: start
+      user: {name: root, uid: 0}
+      process: {name: apt, executable: /usr/bin/apt, command_line: "apt-get -y upgrade", parent_name: unattended-upgr}
+  - at: 3m
+    repeat: {count: 8, every: 7m, jitter: 1m}
+    event:
+      host: app
+      category: process
+      action: start
+      user: {name: root, uid: 0}
+      process: {name: systemctl, executable: /usr/bin/systemctl, command_line: "systemctl restart app.service", parent_name: bash}
+  - at: 4m
+    repeat: {count: 30, every: 2m, jitter: 30s}
+    event:
+      host: ci
+      category: process
+      action: start
+      user: {name: runner, uid: 1002}
+      process: {name: "{{cycle:git|python3|node|make}}", executable: "/usr/bin/{{cycle:git|python3|node|make}}", command_line: "{{cycle:git fetch --all|python3 -m pytest|node build.js|make test}}", parent_name: runner}
+  - at: 5m
+    repeat: {count: 20, every: 3m, jitter: 30s}
+    event:
+      host: ci
+      category: network
+      action: connect
+      user: {name: runner, uid: 1002}
+      process: {name: git}
+      network: {direction: outbound, protocol: tcp, src_ip: host, src_port: "{{int:40000-60000}}", dst_ip: 10.20.0.50, dst_port: 443, state: established}
+  - at: 10m
+    repeat: {count: 3, every: 20m}
+    event:
+      host: app
+      category: file
+      action: modify
+      user: {name: root, uid: 0}
+      process: {name: dpkg}
+      file: {path: /etc/app/config.yaml, mode: "644", size: 2048}
+  - at: 12m
+    event:
+      host: app
+      category: process
+      action: start
+      user: {name: ops-admin, uid: 1000}
+      process: {name: whoami, executable: /usr/bin/whoami, command_line: whoami, parent_name: bash}

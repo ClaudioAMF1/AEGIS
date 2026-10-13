@@ -1,0 +1,26 @@
+title: Remote Script Downloaded and Piped to Shell
+id: aegis-lnx-curl-pipe-shell
+status: stable
+description: Content fetched with curl or wget is piped directly into a shell interpreter.
+references:
+  - https://attack.mitre.org/techniques/T1105/
+author: AEGIS
+tags:
+  - attack.execution
+  - attack.t1059.004
+  - attack.command_and_control
+  - attack.t1105
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  downloader:
+    CommandLine|contains:
+      - 'curl '
+      - 'wget '
+  pipe:
+    CommandLine|re: '\|\s*(sudo\s+)?(ba|da|z)?sh(\s|$)'
+  condition: downloader and pipe
+falsepositives:
+  - Software installers documented with "curl | sh" (review the destination)
+level: high

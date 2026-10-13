@@ -1,0 +1,25 @@
+# Regression cases for aegis-lnx-web-shell-spawn. Events are completed with defaults by the test runner.
+rule: aegis-lnx-web-shell-spawn
+match:
+- process:
+    pid: 2
+    name: sh
+    executable: /usr/bin/sh
+    command_line: sh -c id
+    parent_name: php-fpm8.2
+- process:
+    pid: 2
+    name: bash
+    executable: /bin/bash
+    parent_name: nginx
+no_match:
+- process:
+    pid: 2
+    name: bash
+    executable: /bin/bash
+    parent_name: sshd
+- process:
+    pid: 2
+    name: php
+    executable: /usr/bin/php
+    parent_name: nginx

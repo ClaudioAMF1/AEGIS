@@ -1,0 +1,14 @@
+# Regression cases for aegis-lnx-coin-miner. Events are completed with defaults by the test runner.
+rule: aegis-lnx-coin-miner
+match:
+- process:
+    pid: 2
+    name: xmr
+    executable: /opt/xmr
+    command_line: /opt/xmr -o stratum+tcp://pool.test:3333
+no_match:
+- process:
+    pid: 2
+    name: python3
+    executable: /usr/bin/python3
+    command_line: python3 train.py --threads 8

@@ -1,0 +1,41 @@
+title: System Discovery Command
+id: aegis-lnx-discovery-command
+name: linux_discovery_command
+status: stable
+description: |
+  Individual discovery commands are normal administration activity. This rule does not raise
+  alerts by itself; it feeds the "Burst of Discovery Commands" correlation.
+references:
+  - https://attack.mitre.org/techniques/T1082/
+author: AEGIS
+tags:
+  - attack.discovery
+  - attack.t1082
+  - attack.t1033
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  binaries:
+    Image|endswith:
+      - /whoami
+      - /id
+      - /uname
+      - /hostname
+      - /ifconfig
+      - /ip
+      - /netstat
+      - /ss
+      - /ps
+      - /w
+      - /last
+  passwd:
+    CommandLine|contains:
+      - /etc/passwd
+      - /etc/group
+      - sudo -l
+  condition: binaries or passwd
+generate: false
+falsepositives:
+  - Interactive administration
+level: informational

@@ -1,0 +1,24 @@
+# Regression cases for aegis-lnx-discovery-command. Events are completed with defaults by the test runner.
+rule: aegis-lnx-discovery-command
+match:
+- process:
+    pid: 2
+    name: whoami
+    executable: /usr/bin/whoami
+    command_line: whoami
+- process:
+    pid: 2
+    name: cat
+    executable: /usr/bin/cat
+    command_line: cat /etc/passwd
+no_match:
+- process:
+    pid: 2
+    name: cat
+    executable: /usr/bin/cat
+    command_line: cat notes.txt
+- process:
+    pid: 2
+    name: idle
+    executable: /usr/bin/idle
+    command_line: idle

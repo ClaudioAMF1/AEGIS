@@ -1,0 +1,39 @@
+title: Shell Spawned by Web Server Process
+id: aegis-lnx-web-shell-spawn
+status: stable
+description: |
+  A command interpreter was started by a web server or application runtime. Web servers rarely
+  need to spawn shells; this is a common indicator of a web shell or command injection.
+references:
+  - https://attack.mitre.org/techniques/T1505/003/
+author: AEGIS
+tags:
+  - attack.persistence
+  - attack.t1505.003
+  - attack.execution
+  - attack.t1059.004
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  parent:
+    ParentName:
+      - nginx
+      - apache2
+      - httpd
+      - php-fpm*
+      - lighttpd
+      - caddy
+      - node
+      - gunicorn
+      - uwsgi
+  shell:
+    Image|endswith:
+      - /sh
+      - /bash
+      - /dash
+      - /zsh
+  condition: parent and shell
+falsepositives:
+  - Health-check or deployment scripts executed by the web server user
+level: high

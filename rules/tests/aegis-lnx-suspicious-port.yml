@@ -1,0 +1,40 @@
+# Regression cases for aegis-lnx-suspicious-port. Events are completed with defaults by the test runner.
+rule: aegis-lnx-suspicious-port
+match:
+- category: network
+  action: connect
+  network:
+    direction: outbound
+    protocol: tcp
+    src_ip: 10.0.0.5
+    src_port: 50000
+    dst_ip: 198.51.100.23
+    dst_port: 4444
+no_match:
+- category: network
+  action: connect
+  network:
+    direction: outbound
+    protocol: tcp
+    src_ip: 10.0.0.5
+    src_port: 50000
+    dst_ip: 198.51.100.23
+    dst_port: 443
+- category: network
+  action: connect
+  network:
+    direction: outbound
+    protocol: tcp
+    src_ip: 127.0.0.1
+    src_port: 50000
+    dst_ip: 127.0.0.1
+    dst_port: 4444
+- category: network
+  action: accept
+  network:
+    direction: inbound
+    protocol: tcp
+    src_ip: 198.51.100.23
+    src_port: 4444
+    dst_ip: 10.0.0.5
+    dst_port: 4444

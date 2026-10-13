@@ -1,0 +1,587 @@
+{
+  "$defs": {
+    "AuthInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "maxLength": 32,
+          "title": "Method",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "success",
+            "failure"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "service": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Service"
+        },
+        "source_ip": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source Ip"
+        },
+        "target_user": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target User"
+        }
+      },
+      "required": [
+        "method",
+        "outcome"
+      ],
+      "title": "AuthInfo",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "process",
+        "network",
+        "file",
+        "authentication",
+        "system"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "EventIn": {
+      "additionalProperties": false,
+      "description": "One telemetry event as sent by an agent or simulator.",
+      "properties": {
+        "action": {
+          "maxLength": 32,
+          "minLength": 1,
+          "title": "Action",
+          "type": "string"
+        },
+        "attributes": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "maxProperties": 32,
+          "propertyNames": {
+            "maxLength": 64
+          },
+          "title": "Attributes",
+          "type": "object"
+        },
+        "auth": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AuthInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "event_id": {
+          "format": "uuid",
+          "title": "Event Id",
+          "type": "string"
+        },
+        "file": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FileInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "host": {
+          "$ref": "#/$defs/HostInfo"
+        },
+        "network": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NetworkInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "process": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProcessInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "schema_version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "seq": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Per-agent monotonic counter",
+          "title": "Seq"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UserInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "event_id",
+        "occurred_at",
+        "category",
+        "action",
+        "host"
+      ],
+      "title": "EventIn",
+      "type": "object"
+    },
+    "FileInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "hash_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hash Sha256"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "pattern": "^[0-7]{3,4}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mode"
+        },
+        "path": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "size": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Size"
+        },
+        "target_path": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Target Path"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "FileInfo",
+      "type": "object"
+    },
+    "HostInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "hostname": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "title": "Hostname",
+          "type": "string"
+        },
+        "ip": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Ip",
+          "type": "array"
+        },
+        "os": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os"
+        }
+      },
+      "required": [
+        "hostname"
+      ],
+      "title": "HostInfo",
+      "type": "object"
+    },
+    "NetworkInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "outbound",
+            "inbound",
+            "local"
+          ],
+          "title": "Direction",
+          "type": "string"
+        },
+        "dst_ip": {
+          "title": "Dst Ip",
+          "type": "string"
+        },
+        "dst_port": {
+          "maximum": 65535,
+          "minimum": 0,
+          "title": "Dst Port",
+          "type": "integer"
+        },
+        "protocol": {
+          "enum": [
+            "tcp",
+            "udp",
+            "tcp6",
+            "udp6"
+          ],
+          "title": "Protocol",
+          "type": "string"
+        },
+        "src_ip": {
+          "title": "Src Ip",
+          "type": "string"
+        },
+        "src_port": {
+          "maximum": 65535,
+          "minimum": 0,
+          "title": "Src Port",
+          "type": "integer"
+        },
+        "state": {
+          "anyOf": [
+            {
+              "maxLength": 32,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State"
+        }
+      },
+      "required": [
+        "direction",
+        "protocol",
+        "src_ip",
+        "src_port",
+        "dst_ip",
+        "dst_port"
+      ],
+      "title": "NetworkInfo",
+      "type": "object"
+    },
+    "ProcessInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "command_line": {
+          "anyOf": [
+            {
+              "maxLength": 4096,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Command Line"
+        },
+        "executable": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Executable"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        },
+        "hash_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[a-f0-9]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hash Sha256"
+        },
+        "name": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "parent_executable": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Executable"
+        },
+        "parent_name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parent Name"
+        },
+        "pid": {
+          "minimum": 0,
+          "title": "Pid",
+          "type": "integer"
+        },
+        "ppid": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ppid"
+        },
+        "working_directory": {
+          "anyOf": [
+            {
+              "maxLength": 1024,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Working Directory"
+        }
+      },
+      "required": [
+        "pid",
+        "name"
+      ],
+      "title": "ProcessInfo",
+      "type": "object"
+    },
+    "UserInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "uid": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uid"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "UserInfo",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent_version": {
+      "anyOf": [
+        {
+          "maxLength": 32,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Version"
+    },
+    "buffer_depth": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Buffer Depth"
+    },
+    "events": {
+      "items": {
+        "$ref": "#/$defs/EventIn"
+      },
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Events",
+      "type": "array"
+    }
+  },
+  "required": [
+    "events"
+  ],
+  "title": "EventBatch",
+  "type": "object"
+}

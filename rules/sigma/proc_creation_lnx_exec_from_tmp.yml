@@ -1,0 +1,25 @@
+title: Execution from World-Writable Directory
+id: aegis-lnx-exec-from-tmp
+status: stable
+description: A binary was executed from /tmp, /var/tmp or /dev/shm, typical for dropped payloads.
+references:
+  - https://attack.mitre.org/techniques/T1036/
+author: AEGIS
+tags:
+  - attack.defense_evasion
+  - attack.t1036
+  - attack.execution
+  - attack.t1204.002
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  location:
+    Image|startswith:
+      - /tmp/
+      - /var/tmp/
+      - /dev/shm/
+  condition: location
+falsepositives:
+  - Build systems and installers that unpack into /tmp
+level: medium

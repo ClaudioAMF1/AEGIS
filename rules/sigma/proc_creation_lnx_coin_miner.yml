@@ -1,0 +1,25 @@
+title: Cryptocurrency Miner Command Line
+id: aegis-lnx-coin-miner
+status: stable
+description: Command line arguments characteristic of cryptocurrency mining software.
+references:
+  - https://attack.mitre.org/techniques/T1496/
+author: AEGIS
+tags:
+  - attack.impact
+  - attack.t1496
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  selection:
+    CommandLine|contains:
+      - 'stratum+tcp://'
+      - 'stratum+ssl://'
+      - '--donate-level'
+      - '--cpu-max-threads-hint'
+      - 'xmrig'
+  condition: selection
+falsepositives:
+  - Authorised mining workloads
+level: high

@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "HostInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "hostname": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "title": "Hostname",
+          "type": "string"
+        },
+        "ip": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Ip",
+          "type": "array"
+        },
+        "os": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Os"
+        }
+      },
+      "required": [
+        "hostname"
+      ],
+      "title": "HostInfo",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "agent_version": {
+      "maxLength": 32,
+      "title": "Agent Version",
+      "type": "string"
+    },
+    "buffer_depth": {
+      "minimum": 0,
+      "title": "Buffer Depth",
+      "type": "integer"
+    },
+    "dropped_events": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Dropped Events",
+      "type": "integer"
+    },
+    "host": {
+      "$ref": "#/$defs/HostInfo"
+    },
+    "uptime_seconds": {
+      "minimum": 0,
+      "title": "Uptime Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "agent_version",
+    "host",
+    "buffer_depth",
+    "uptime_seconds"
+  ],
+  "title": "HeartbeatIn",
+  "type": "object"
+}

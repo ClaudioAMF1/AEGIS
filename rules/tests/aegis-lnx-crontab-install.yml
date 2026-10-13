@@ -1,0 +1,19 @@
+# Regression cases for aegis-lnx-crontab-install. Events are completed with defaults by the test runner.
+rule: aegis-lnx-crontab-install
+match:
+- process:
+    pid: 2
+    name: crontab
+    executable: /usr/bin/crontab
+    command_line: crontab /tmp/c
+no_match:
+- process:
+    pid: 2
+    name: crontab
+    executable: /usr/bin/crontab
+    command_line: crontab -l
+- process:
+    pid: 2
+    name: crontab
+    executable: /usr/bin/crontab
+    command_line: crontab -e

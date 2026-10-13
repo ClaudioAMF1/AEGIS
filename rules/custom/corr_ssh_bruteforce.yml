@@ -1,0 +1,21 @@
+title: SSH Brute Force
+id: aegis-corr-ssh-bruteforce
+status: stable
+description: Ten or more failed SSH logins from the same source against one host within 5 minutes.
+author: AEGIS
+tags:
+  - attack.credential_access
+  - attack.t1110.001
+correlation:
+  type: event_count
+  rules:
+    - ssh_login_failure
+  group-by:
+    - auth.source_ip
+    - host.hostname
+  timespan: 5m
+  condition:
+    gte: 10
+falsepositives:
+  - Misconfigured automation with stale credentials
+level: high

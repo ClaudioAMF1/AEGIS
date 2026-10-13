@@ -1,0 +1,27 @@
+title: Account Database Modified
+id: aegis-lnx-account-file-change
+status: stable
+description: /etc/passwd, /etc/shadow or /etc/sudoers was modified outside package management.
+references:
+  - https://attack.mitre.org/techniques/T1136/001/
+author: AEGIS
+tags:
+  - attack.persistence
+  - attack.t1136.001
+  - attack.privilege_escalation
+  - attack.t1548.003
+logsource:
+  product: linux
+  category: file_change
+detection:
+  selection:
+    TargetFilename:
+      - /etc/passwd
+      - /etc/shadow
+      - /etc/sudoers
+  sudoers_d:
+    TargetFilename|startswith: /etc/sudoers.d/
+  condition: selection or sudoers_d
+falsepositives:
+  - useradd/passwd/visudo by administrators
+level: high

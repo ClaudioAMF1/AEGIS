@@ -1,0 +1,22 @@
+title: Burst of Discovery Commands
+id: aegis-corr-discovery-burst
+status: stable
+description: Four or more discovery commands run by the same user on one host within 2 minutes.
+author: AEGIS
+tags:
+  - attack.discovery
+  - attack.t1082
+  - attack.t1033
+correlation:
+  type: event_count
+  rules:
+    - linux_discovery_command
+  group-by:
+    - host.hostname
+    - user.name
+  timespan: 2m
+  condition:
+    gte: 4
+falsepositives:
+  - Interactive troubleshooting sessions
+level: medium

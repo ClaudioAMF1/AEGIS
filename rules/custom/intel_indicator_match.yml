@@ -1,0 +1,19 @@
+title: Activity Involving Known Threat Indicator
+id: aegis-intel-indicator-match
+status: stable
+description: |
+  A network peer, login source or file hash matched an active threat-intelligence indicator.
+  Indicator matches are auxiliary evidence and must be confirmed during investigation.
+author: AEGIS
+tags:
+  - attack.command_and_control
+logsource:
+  product: aegis
+  category: network
+detection:
+  selection:
+    intel.matched: true
+  condition: selection
+falsepositives:
+  - Stale or low-confidence indicators; shared hosting addresses
+level: high

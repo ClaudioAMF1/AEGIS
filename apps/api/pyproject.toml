@@ -1,0 +1,65 @@
+[project]
+name = "aegis-api"
+version = "0.1.0"
+description = "AEGIS — Autonomous Cyber Defense Platform: API, ingestion pipeline and detection engine"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.143,<0.144",
+    "uvicorn[standard]>=0.54,<0.55",
+    "pydantic[email]>=2.14,<3",
+    "pydantic-settings>=2.15,<3",
+    "sqlalchemy>=2.1,<2.2",
+    "alembic>=1.20,<2",
+    "psycopg[binary]>=3.3,<4",
+    "argon2-cffi>=25.1",
+    "pyotp>=2.10",
+    "cryptography>=46",
+    "redis>=8.1,<9",
+    "pyyaml>=6.0",
+    "prometheus-client>=0.26",
+    "fpdf2>=2.8",
+    "anthropic>=1.13",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1",
+    "httpx>=0.28",
+    "ruff>=0.17",
+    "mypy>=2.4",
+    "types-pyyaml",
+    "jsonschema>=4.25",
+]
+
+[project.scripts]
+aegis = "aegis.cli:main"
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "aegis"
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "SIM", "RUF"]
+ignore = ["S101", "B008", "RUF012"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106", "S108", "S311"]
+"src/aegis/migrations/**" = ["E501", "I001", "UP035", "F401"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["."]

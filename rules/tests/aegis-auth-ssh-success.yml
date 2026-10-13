@@ -1,0 +1,19 @@
+# Regression cases for aegis-auth-ssh-success. Events are completed with defaults by the test runner.
+rule: aegis-auth-ssh-success
+match:
+- category: authentication
+  action: login_success
+  auth:
+    method: publickey
+    outcome: success
+    source_ip: 10.0.0.2
+    target_user: x
+    service: sshd
+no_match:
+- category: authentication
+  action: login_failure
+  auth:
+    method: password
+    outcome: failure
+    target_user: x
+    service: sshd

@@ -1,0 +1,19 @@
+title: SSH Login Success
+id: aegis-auth-ssh-success
+name: ssh_login_success
+status: stable
+description: Successful SSH authentication. Building block for correlations.
+author: AEGIS
+tags:
+  - attack.initial_access
+  - attack.t1078
+logsource:
+  product: aegis
+  category: authentication
+detection:
+  selection:
+    action: login_success
+    auth.service: sshd
+  condition: selection
+generate: false
+level: informational

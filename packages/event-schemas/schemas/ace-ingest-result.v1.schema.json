@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "RejectedEvent": {
+      "properties": {
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Event Id"
+        },
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "event_id",
+        "reason"
+      ],
+      "title": "RejectedEvent",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "accepted": {
+      "title": "Accepted",
+      "type": "integer"
+    },
+    "duplicates": {
+      "title": "Duplicates",
+      "type": "integer"
+    },
+    "ingested_at": {
+      "format": "date-time",
+      "title": "Ingested At",
+      "type": "string"
+    },
+    "pipeline": {
+      "title": "Pipeline",
+      "type": "string"
+    },
+    "rejected": {
+      "items": {
+        "$ref": "#/$defs/RejectedEvent"
+      },
+      "title": "Rejected",
+      "type": "array"
+    }
+  },
+  "required": [
+    "accepted",
+    "duplicates",
+    "rejected",
+    "ingested_at",
+    "pipeline"
+  ],
+  "title": "IngestResult",
+  "type": "object"
+}

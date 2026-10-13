@@ -1,0 +1,19 @@
+# Regression cases for aegis-auth-ssh-failure. Events are completed with defaults by the test runner.
+rule: aegis-auth-ssh-failure
+match:
+- category: authentication
+  action: login_failure
+  auth:
+    method: password
+    outcome: failure
+    source_ip: 203.0.113.9
+    target_user: x
+    service: sshd
+no_match:
+- category: authentication
+  action: login_failure
+  auth:
+    method: password
+    outcome: failure
+    target_user: x
+    service: login

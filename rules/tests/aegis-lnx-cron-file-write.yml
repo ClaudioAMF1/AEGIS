@@ -1,0 +1,20 @@
+# Regression cases for aegis-lnx-cron-file-write. Events are completed with defaults by the test runner.
+rule: aegis-lnx-cron-file-write
+match:
+- category: file
+  action: create
+  file:
+    path: /etc/cron.d/backdoor
+- category: file
+  action: modify
+  file:
+    path: /etc/crontab
+no_match:
+- category: file
+  action: delete
+  file:
+    path: /etc/cron.d/old
+- category: file
+  action: modify
+  file:
+    path: /etc/crontab.bak

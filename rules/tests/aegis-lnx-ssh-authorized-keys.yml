@@ -1,0 +1,12 @@
+# Regression cases for aegis-lnx-ssh-authorized-keys. Events are completed with defaults by the test runner.
+rule: aegis-lnx-ssh-authorized-keys
+match:
+- category: file
+  action: modify
+  file:
+    path: /home/deploy/.ssh/authorized_keys
+no_match:
+- category: file
+  action: modify
+  file:
+    path: /home/deploy/.ssh/known_hosts

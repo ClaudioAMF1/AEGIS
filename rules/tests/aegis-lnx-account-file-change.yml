@@ -1,0 +1,20 @@
+# Regression cases for aegis-lnx-account-file-change. Events are completed with defaults by the test runner.
+rule: aegis-lnx-account-file-change
+match:
+- category: file
+  action: modify
+  file:
+    path: /etc/shadow
+- category: file
+  action: chmod
+  file:
+    path: /etc/sudoers.d/90-x
+no_match:
+- category: file
+  action: create
+  file:
+    path: /etc/shadow
+- category: file
+  action: modify
+  file:
+    path: /etc/passwd-

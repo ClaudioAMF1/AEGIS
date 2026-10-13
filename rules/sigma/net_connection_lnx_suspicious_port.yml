@@ -1,0 +1,30 @@
+title: Outbound Connection to Uncommon Listener Port
+id: aegis-lnx-suspicious-port
+status: stable
+description: Outbound TCP connection to ports frequently used by reverse shells and mining pools.
+references:
+  - https://attack.mitre.org/techniques/T1571/
+author: AEGIS
+tags:
+  - attack.command_and_control
+  - attack.t1571
+logsource:
+  product: linux
+  category: network_connection
+detection:
+  selection:
+    Initiated: 'true'
+    DestinationPort:
+      - 4444
+      - 1337
+      - 3333
+      - 5555
+      - 6666
+      - 14444
+  internal:
+    DestinationIp|cidr:
+      - 127.0.0.0/8
+  condition: selection and not internal
+falsepositives:
+  - Development servers bound to these ports
+level: medium

@@ -1,0 +1,24 @@
+title: Crontab Installed From File
+id: aegis-lnx-crontab-install
+status: stable
+description: A user crontab was replaced from a file or standard input.
+references:
+  - https://attack.mitre.org/techniques/T1053/003/
+author: AEGIS
+tags:
+  - attack.persistence
+  - attack.t1053.003
+logsource:
+  product: linux
+  category: process_creation
+detection:
+  crontab:
+    Image|endswith: /crontab
+  not_listing:
+    CommandLine|contains:
+      - ' -l'
+      - ' -e'
+  condition: crontab and not not_listing
+falsepositives:
+  - Configuration management tools
+level: medium
