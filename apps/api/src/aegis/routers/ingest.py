@@ -83,22 +83,10 @@ def heartbeat(body: HeartbeatIn, agent: CurrentAgent, db: DbSession) -> Heartbea
     agent.version = body.agent_version
     agent.buffer_depth = body.buffer_depth
     if agent.endpoint_id is None:
-        endpoint = db.scalar(
-            select(Endpoint).where(
-                Endpoint.hostname == body.host.hostname,
-                Endpoint.is_synthetic.is_(agent.is_synthetic),
-            )
+        created = pipeline.get_or_create_endpoint(
+            db, body.host.hostname, agent.is_synthetic, body.host.os, body.host.ip
         )
-        if endpoint is None:
-            endpoint = Endpoint(
-                hostname=body.host.hostname,
-                os=body.host.os,
-                ip_addresses=body.host.ip,
-                is_synthetic=agent.is_synthetic,
-            )
-            db.add(endpoint)
-            db.flush()
-        agent.endpoint_id = endpoint.id
+        agent.endpoint_id = created.id
         agent.status = "active"
     endpoint = db.get(Endpoint, agent.endpoint_id)
     if endpoint is not None:

@@ -169,3 +169,20 @@ def test_retention_keeps_evidence(app_client: TestClient, admin: Api, agent_toke
         remaining = {str(e.id) for e in db.query(Event).all()}
     assert result["events"] == 1
     assert remaining == {evidence["event_id"]}
+
+
+def test_concurrent_first_batches_from_one_host(
+    app_client: TestClient, admin: Api, agent_token: str
+) -> None:
+    """Regression: parallel first batches used to race on endpoint creation (HTTP 500)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    def send(_: int) -> int:
+        client = TestClient(app_client.app, base_url="http://testserver")
+        return int(ingest(client, agent_token, [event(hostname="race-host")]).status_code)
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        statuses = list(pool.map(send, range(6)))
+    assert statuses == [200] * 6
+    endpoints = [e for e in admin.get("/api/v1/endpoints").json() if e["hostname"] == "race-host"]
+    assert len(endpoints) == 1

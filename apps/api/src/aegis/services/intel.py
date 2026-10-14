@@ -11,6 +11,7 @@ import json
 import logging
 import urllib.parse
 import urllib.request
+import uuid
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import Any
@@ -86,13 +87,18 @@ def match_values(db: Session, observed: dict[str, str]) -> list[Match]:
                     continue
             elif indicator.value == value.lower():
                 matches.append(Match(indicator, value, field))
-    if matches:
+    return matches
+
+
+def record_hits(db: Session, hits: dict[uuid.UUID, int]) -> None:
+    """Apply aggregated hit counters once per transaction, in id order (stable lock order)."""
+    now = utcnow()
+    for indicator_id in sorted(hits):
         db.execute(
             update(ThreatIndicator)
-            .where(ThreatIndicator.id.in_({m.indicator.id for m in matches}))
-            .values(hits=ThreatIndicator.hits + 1, last_seen_at=now)
+            .where(ThreatIndicator.id == indicator_id)
+            .values(hits=ThreatIndicator.hits + hits[indicator_id], last_seen_at=now)
         )
-    return matches
 
 
 def enrichment_for(matches: list[Match]) -> dict[str, Any]:

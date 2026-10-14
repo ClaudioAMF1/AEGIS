@@ -18,7 +18,7 @@ from datetime import timedelta
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import insert, select
+from sqlalchemy import case, func, insert, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
@@ -90,9 +90,53 @@ class IngestOutcome:
     detection: DetectionResult | None = None
 
 
-def _resolve_endpoint(db: Session, agent: Agent, event: EventIn) -> Endpoint:
-    if agent.endpoint_id is not None:
-        endpoint = db.get(Endpoint, agent.endpoint_id)
+def get_or_create_endpoint(
+    db: Session, hostname: str, synthetic: bool, os: str | None, ips: list[str]
+) -> Endpoint:
+    """Race-free upsert: concurrent first batches from one host must not collide on the
+    (hostname, is_synthetic) unique constraint."""
+    stmt = select(Endpoint).where(
+        Endpoint.hostname == hostname, Endpoint.is_synthetic.is_(synthetic)
+    )
+    endpoint = db.scalar(stmt)
+    if endpoint is not None:
+        return endpoint
+    values = {
+        "id": uuid.uuid4(),
+        "hostname": hostname,
+        "os": os,
+        "ip_addresses": ips,
+        "is_synthetic": synthetic,
+        "criticality": "medium",
+        "tags": [],
+        "first_seen_at": utcnow(),
+        "isolation_state": "none",
+    }
+    dialect = db.get_bind().dialect.name
+    if dialect in {"postgresql", "sqlite"}:
+        insert_fn = pg_insert if dialect == "postgresql" else sqlite_insert
+        db.execute(
+            insert_fn(Endpoint)
+            .values(values)
+            .on_conflict_do_nothing(index_elements=["hostname", "is_synthetic"])
+        )
+    else:  # pragma: no cover - other dialects are not supported in production
+        db.add(Endpoint(**values))
+    db.flush()
+    endpoint = db.scalar(stmt.execution_options(populate_existing=True))
+    assert endpoint is not None
+    return endpoint
+
+
+def _resolve_endpoint(
+    db: Session, agent: Agent, bound_id: uuid.UUID | None, event: EventIn
+) -> Endpoint:
+    """Endpoint for an event, enforcing that an agent only reports for the host it is bound to.
+
+    The agent row is *not* modified here: binding is applied with an atomic UPDATE at the end of
+    the transaction so concurrent batches lock rows in a consistent order."""
+    if bound_id is not None:
+        endpoint = db.get(Endpoint, bound_id)
         if endpoint is not None:
             if endpoint.hostname != event.host.hostname:
                 raise OriginMismatch(
@@ -100,24 +144,9 @@ def _resolve_endpoint(db: Session, agent: Agent, event: EventIn) -> Endpoint:
                     f"'{event.host.hostname}'"
                 )
             return endpoint
-    endpoint = db.scalar(
-        select(Endpoint).where(
-            Endpoint.hostname == event.host.hostname, Endpoint.is_synthetic.is_(agent.is_synthetic)
-        )
+    return get_or_create_endpoint(
+        db, event.host.hostname, agent.is_synthetic, event.host.os, event.host.ip
     )
-    if endpoint is None:
-        endpoint = Endpoint(
-            hostname=event.host.hostname,
-            os=event.host.os,
-            ip_addresses=event.host.ip,
-            is_synthetic=agent.is_synthetic,
-        )
-        db.add(endpoint)
-        db.flush()
-    agent.endpoint_id = endpoint.id
-    if agent.status == AgentStatus.PENDING.value:
-        agent.status = AgentStatus.ACTIVE.value
-    return endpoint
 
 
 def _insert_ignore(db: Session, rows: list[dict[str, Any]]) -> set[uuid.UUID]:
@@ -223,9 +252,14 @@ def ingest(
 
     rows: list[dict[str, Any]] = []
     endpoints: dict[str, Endpoint] = {}
+    bound_id = agent.endpoint_id
+    indicator_hits: dict[uuid.UUID, int] = {}
     for index, event in valid:
         try:
-            endpoint = endpoints.get(event.host.hostname) or _resolve_endpoint(db, agent, event)
+            endpoint = endpoints.get(event.host.hostname) or _resolve_endpoint(
+                db, agent, bound_id, event
+            )
+            bound_id = bound_id or endpoint.id
         except OriginMismatch as exc:
             rejected.append(
                 RejectedEvent(index=index, event_id=str(event.event_id), reason=str(exc))
@@ -234,7 +268,10 @@ def ingest(
             continue
         endpoints[event.host.hostname] = endpoint
         payload = event.model_dump(mode="json", exclude_none=True)
-        enrichment = intel.enrichment_for(intel.match_values(db, observables(event)))
+        matches = intel.match_values(db, observables(event))
+        for match in matches:
+            indicator_hits[match.indicator.id] = indicator_hits.get(match.indicator.id, 0) + 1
+        enrichment = intel.enrichment_for(matches)
         rows.append(
             {
                 "id": event.event_id,
@@ -293,19 +330,38 @@ def ingest(
 
     inserted_ids = _insert_ignore(db, rows)
     duplicates = batch_duplicates + (len(rows) - len(inserted_ids))
-    agent.events_received += len(inserted_ids)
-    agent.events_duplicated += duplicates
-    agent.events_rejected += len(rejected)
-    agent.last_heartbeat_at = now
-    if agent_version:
-        agent.version = agent_version
-    if buffer_depth is not None:
-        agent.buffer_depth = buffer_depth
+    # Atomic counter updates in a fixed lock order (indicators, endpoints, agents): concurrent
+    # batches neither lose increments nor deadlock.
+    intel.record_hits(db, indicator_hits)
+    if endpoints:
+        db.execute(
+            update(Endpoint)
+            .where(Endpoint.id.in_(sorted(e.id for e in endpoints.values())))
+            .values(last_seen_at=now)
+        )
     seqs = [e.seq for _, e in valid if e.seq is not None]
+    values: dict[str, Any] = {
+        "events_received": Agent.events_received + len(inserted_ids),
+        "events_duplicated": Agent.events_duplicated + duplicates,
+        "events_rejected": Agent.events_rejected + len(rejected),
+        "last_heartbeat_at": now,
+    }
+    if bound_id is not None:
+        values["endpoint_id"] = func.coalesce(Agent.endpoint_id, bound_id)
+        values["status"] = case(
+            (Agent.status == AgentStatus.PENDING.value, AgentStatus.ACTIVE.value),
+            else_=Agent.status,
+        )
+    if agent_version:
+        values["version"] = agent_version
+    if buffer_depth is not None:
+        values["buffer_depth"] = buffer_depth
     if seqs:
-        agent.last_seq = max(agent.last_seq or 0, *seqs)
-    for endpoint in endpoints.values():
-        endpoint.last_seen_at = now
+        top = max(seqs)
+        values["last_seq"] = case(
+            (Agent.last_seq.is_(None), top), (Agent.last_seq < top, top), else_=Agent.last_seq
+        )
+    db.execute(update(Agent).where(Agent.id == agent.id).values(**values))
     db.commit()
 
     inserted = (
