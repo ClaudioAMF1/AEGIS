@@ -1,0 +1,109 @@
+# AEGIS local stack. Usage (see README):
+#   cp .env.example .env   # set secrets
+#   docker compose up -d --build
+#   docker compose run --rm api aegis create-user --email you@lab.local --generate-password
+# Observability (Prometheus + Grafana): docker compose --profile observability up -d
+
+name: aegis
+
+x-api-env: &api-env
+  AEGIS_ENVIRONMENT: production
+  AEGIS_SECRET_KEY: ${AEGIS_SECRET_KEY:?set AEGIS_SECRET_KEY in .env}
+  AEGIS_DATABASE_URL: postgresql://aegis:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/aegis
+  AEGIS_REDIS_URL: redis://redis:6379/0
+  AEGIS_PIPELINE_MODE: broker
+  AEGIS_COOKIE_SECURE: "false" # the bundled gateway serves plain HTTP on localhost; set true behind TLS
+  AEGIS_ANTHROPIC_API_KEY: ${AEGIS_ANTHROPIC_API_KEY:-}
+  AEGIS_ASSISTANT_MODEL: ${AEGIS_ASSISTANT_MODEL:-claude-opus-5-5}
+  AEGIS_INTEL_EXTERNAL_ENABLED: ${AEGIS_INTEL_EXTERNAL_ENABLED:-false}
+  AEGIS_ABUSEIPDB_API_KEY: ${AEGIS_ABUSEIPDB_API_KEY:-}
+  AEGIS_RESPONSE_ALLOW_SELF_APPROVAL: ${AEGIS_RESPONSE_ALLOW_SELF_APPROVAL:-false}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: aegis
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis"]
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 20
+
+  migrate:
+    build: { context: ., dockerfile: apps/api/Dockerfile }
+    image: aegis-api:local
+    command: ["aegis", "migrate"]
+    environment: *api-env
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    image: aegis-api:local
+    environment: *api-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    image: aegis-api:local
+    command: ["aegis", "worker"]
+    environment: *api-env
+    healthcheck:
+      disable: true # no HTTP listener; liveness is visible through the broker backlog metric
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    build: { context: apps/web }
+    image: aegis-web:local
+    environment:
+      AEGIS_API_ORIGIN: http://api:8000
+    depends_on: [api]
+    restart: unless-stopped
+
+  gateway:
+    image: caddy:2-alpine
+    volumes:
+      - ./infrastructure/docker/Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "127.0.0.1:${AEGIS_HTTP_PORT:-8080}:8080"
+    depends_on: [web, api]
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: [observability]
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["127.0.0.1:9090:9090"]
+
+  grafana:
+    image: grafana/grafana:12.1.0
+    profiles: [observability]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["127.0.0.1:3001:3000"]
+    depends_on: [prometheus]
+
+volumes:
+  pgdata:
+  redisdata:

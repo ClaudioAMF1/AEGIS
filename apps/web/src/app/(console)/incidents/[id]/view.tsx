@@ -8,6 +8,7 @@ import { type FormEvent, useMemo, useState } from "react";
 import { EventTimeline } from "@/components/event-list";
 import { EntityGraph, GraphLegend, KIND_LABEL } from "@/components/graph/entity-graph";
 import { ProcessTree } from "@/components/process-tree";
+import { ActionList, ProposeAction, type TargetOption } from "@/components/response-actions";
 import { TimelineChart } from "@/components/timeline-chart";
 import { AlertStatusBadge, AttackTag, DemoBadge, IncidentStatusBadge, SeverityBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -298,6 +299,28 @@ function JournalTab({ incident }: { incident: IncidentDetail }) {
   );
 }
 
+function ResponseTab({ incident }: { incident: IncidentDetail }) {
+  const canRequest = usePermission("response:request");
+  const options: TargetOption[] = [
+    ...(incident.status === "new" ? [{ action_type: "request_investigation", target_id: incident.id, label: `INC-${String(incident.number).padStart(4, "0")}` }] : []),
+    { action_type: "raise_incident_severity", target_id: incident.id, label: `INC-${String(incident.number).padStart(4, "0")}` },
+    ...incident.endpoints.map((e) => ({ action_type: "isolate_host_lab", target_id: e.id, label: e.hostname })),
+    ...[...new Set(incident.alerts.map((a) => a.rule_id))].map((r) => ({ action_type: "disable_rule", target_id: r, label: r })),
+  ];
+  return (
+    <div className="grid gap-4 xl:grid-cols-[360px_1fr]">
+      {canRequest ? (
+        <Panel title="propor ação" meta="prévia → justificativa → aprovação">
+          <ProposeAction options={options} incidentId={incident.id} />
+        </Panel>
+      ) : null}
+      <Panel title="ações deste incidente" meta="catálogo fechado · sem execução remota arbitrária">
+        <ActionList incidentId={incident.id} />
+      </Panel>
+    </div>
+  );
+}
+
 export function IncidentView({ id }: { id: string }) {
   const [tab, setTab] = useState("overview");
   const query = useQuery({ queryKey: ["incident", id], queryFn: () => api.get<IncidentDetail>(`/incidents/${id}`), refetchInterval: 20_000 });
@@ -347,6 +370,7 @@ export function IncidentView({ id }: { id: string }) {
           { value: "process", label: "processos" },
           { value: "graph", label: "grafo" },
           { value: "journal", label: `diário · evidências` },
+          { value: "response", label: "resposta" },
         ]}
       >
         <TabPanel value="overview"><Overview incident={incident} /></TabPanel>
@@ -354,6 +378,7 @@ export function IncidentView({ id }: { id: string }) {
         <TabPanel value="process"><ProcessTab id={id} /></TabPanel>
         <TabPanel value="graph"><GraphTab id={id} /></TabPanel>
         <TabPanel value="journal"><JournalTab incident={incident} /></TabPanel>
+        <TabPanel value="response"><ResponseTab incident={incident} /></TabPanel>
       </Tabs>
     </>
   );
