@@ -35,3 +35,6 @@ agent-token*
 .DS_Store
 .idea/
 .vscode/
+
+# Local service data
+*.rdb
