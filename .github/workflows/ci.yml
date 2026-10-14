@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AEGIS_SECRET_KEY: ci-only-secret-key-not-used-anywhere-else-0123456789
+
+jobs:
+  api:
+    name: API · lint, types, tests (SQLite + PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: aegis, POSTGRES_PASSWORD: aegis, POSTGRES_DB: aegis_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U aegis" --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { python-version: "3.13", enable-cache: true }
+      - run: uv sync --frozen
+      - run: uv run ruff format --check src tests
+      - run: uv run ruff check src tests
+      - run: uv run mypy src
+      - run: uv run aegis rules
+      - name: Tests (SQLite)
+        run: uv run pytest
+      - name: Tests (PostgreSQL + Redis broker)
+        run: uv run pytest
+        env:
+          AEGIS_TEST_DATABASE_URL: postgresql://aegis:aegis@localhost:5432/aegis_test
+          AEGIS_TEST_REDIS_URL: redis://localhost:6379/0
+      - name: Dependency audit
+        run: uvx pip-audit --strict -r <(uv export --frozen --no-dev --no-hashes --no-emit-project)
+        shell: bash
+
+  agent:
+    name: Agent · fmt, clippy, tests
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: agents/linux-agent } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: "rustfmt, clippy" }
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: agents/linux-agent }
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      - run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with: { name: aegis-agent, path: agents/linux-agent/target/release/aegis-agent }
+      - name: Dependency audit
+        run: cargo install cargo-audit --locked && cargo audit
+
+  contract:
+    name: Contract · agent output vs ACE schema
+    needs: agent
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/api } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { python-version: "3.13", enable-cache: true }
+      - uses: actions/download-artifact@v4
+        with: { name: aegis-agent, path: /tmp/agent }
+      - run: chmod +x /tmp/agent/aegis-agent
+      - run: uv sync --frozen
+      - run: uv run pytest tests/test_contracts.py
+        env: { AEGIS_AGENT_BIN: /tmp/agent/aegis-agent }
+
+  web:
+    name: Web · lint, types, unit tests, build
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: apps/web } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - run: npm ci
+      - run: npx eslint src
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm run build
+      - name: Dependency audit
+        run: npm audit --omit=dev --audit-level=high
+
+  e2e:
+    name: E2E · Playwright against the running stack
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: aegis, POSTGRES_PASSWORD: aegis, POSTGRES_DB: aegis }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U aegis" --health-interval 5s --health-retries 20
+    env:
+      AEGIS_DATABASE_URL: postgresql://aegis:aegis@localhost:5432/aegis
+      AEGIS_COOKIE_SECURE: "false"
+      AEGIS_RESPONSE_ALLOW_SELF_APPROVAL: "true"
+      E2E_ADMIN_EMAIL: e2e-admin@aegis.lab
+      E2E_BASE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with: { python-version: "3.13", enable-cache: true }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: apps/web/package-lock.json }
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          uv sync --frozen --no-dev
+          uv run aegis migrate
+          echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+      - name: Create administrator and launch services
+        run: |
+          cd apps/api
+          echo "$E2E_ADMIN_PASSWORD" | uv run aegis create-user --email "$E2E_ADMIN_EMAIL" --password-stdin
+          nohup uv run uvicorn aegis.main:create_app --factory --port 8000 > /tmp/api.log 2>&1 &
+          cd ../web && npm ci && npm run build
+          cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/
+          nohup node .next/standalone/server.js > /tmp/web.log 2>&1 &
+          npx wait-on -t 60000 http://localhost:8000/api/v1/health http://localhost:3000/login
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npx playwright test
+        working-directory: apps/web
+      - if: failure()
+        run: tail -n 200 /tmp/api.log /tmp/web.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: playwright-report, path: apps/web/playwright-report, if-no-files-found: ignore }
+
+  docker:
+    name: Docker · images build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - run: cp .env.example .env && docker compose config -q
+      - run: docker build -f apps/api/Dockerfile -t aegis-api:ci .
+      - run: docker build -t aegis-web:ci apps/web

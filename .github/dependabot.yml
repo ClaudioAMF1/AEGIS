@@ -1,0 +1,19 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /apps/api
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /apps/web
+    schedule: { interval: weekly }
+    groups:
+      react: { patterns: ["react", "react-dom", "@types/react*"] }
+  - package-ecosystem: cargo
+    directory: /agents/linux-agent
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directories: ["/apps/api", "/apps/web"]
+    schedule: { interval: monthly }
