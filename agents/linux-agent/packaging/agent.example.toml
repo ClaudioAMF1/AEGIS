@@ -1,0 +1,42 @@
+# /etc/aegis/agent.toml — AEGIS Linux agent configuration.
+# Install only on machines you own or are explicitly authorised to monitor.
+
+api_url = "https://aegis.lab.local"          # plain http is refused except for local/lab hosts
+token_file = "/etc/aegis/agent.token"        # mode 0600, owned by root
+# hostname = "web-01"                        # defaults to /proc/sys/kernel/hostname
+state_dir = "/var/lib/aegis-agent"           # spool + sequence state
+insecure_skip_tls_verify = false             # lab only
+
+[sender]
+batch_size = 200                # the API accepts at most 500
+flush_interval_ms = 2000
+heartbeat_interval_s = 30
+max_buffer_bytes = 67108864     # 64 MiB on-disk spool while the API is unreachable
+max_events_per_second = 500     # excess is dropped and reported in heartbeats
+queue_capacity = 10000
+
+[collectors.process]
+enabled = true
+poll_interval_ms = 250          # processes shorter-lived than this may be missed (see README)
+
+[collectors.network]
+enabled = true
+poll_interval_ms = 1000
+ignore_loopback = true
+
+[collectors.file]
+enabled = true
+paths = ["/etc", "/etc/cron.d", "/etc/sudoers.d", "/var/spool/cron/crontabs", "/root/.ssh"]
+
+[collectors.auth]
+enabled = true
+log_files = ["/var/log/auth.log", "/var/log/secure"]
+
+[privacy]
+collect_command_line = true
+# Matches are replaced by [redacted] before anything leaves the host.
+redact_patterns = [
+  '(?i)(--?(password|passwd|pass|token|secret|api[-_]?key)[= ])\S+',
+  '(?i)(authorization:\s*bearer\s+)\S+',
+  '://[^/\s:@]+:[^/\s@]+@',
+]

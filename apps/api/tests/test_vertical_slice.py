@@ -151,3 +151,21 @@ def test_batch_limits(app_client: TestClient, agent_token: str) -> None:
         headers={"authorization": f"Bearer {agent_token}", "content-type": "application/json"},
     )
     assert response.status_code == 400
+
+
+def test_retention_keeps_evidence(app_client: TestClient, admin: Api, agent_token: str) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from aegis.db import session_factory
+    from aegis.models import Event
+    from aegis.services.retention import purge
+
+    old = datetime.now(UTC) - timedelta(days=5)
+    benign = event(occurred_at=old)
+    evidence = event(occurred_at=old, process=REVERSE_SHELL)
+    assert ingest(app_client, agent_token, [benign, evidence]).json()["accepted"] == 2
+    with session_factory()() as db:
+        result = purge(db, days=1)
+        remaining = {str(e.id) for e in db.query(Event).all()}
+    assert result["events"] == 1
+    assert remaining == {evidence["event_id"]}

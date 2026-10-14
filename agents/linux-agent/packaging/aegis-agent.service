@@ -1,0 +1,29 @@
+[Unit]
+Description=AEGIS Linux telemetry agent
+Documentation=https://github.com/ClaudioAMF1/AEGIS/tree/main/agents/linux-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/aegis-agent run --config /etc/aegis/agent.toml
+Restart=on-failure
+RestartSec=5
+# Root is needed to read every /proc/PID/{exe,cwd,fd} and the auth log; the rest is locked down.
+User=root
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/aegis-agent
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=true
+MemoryMax=256M
+CPUQuota=20%
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

@@ -7,13 +7,12 @@ import getpass
 import json
 import secrets
 import sys
-from datetime import timedelta
 from pathlib import Path
 
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from aegis.config import get_settings
-from aegis.db import session_factory, utcnow
+from aegis.db import session_factory
 
 
 def _migrate(_: argparse.Namespace) -> int:
@@ -105,21 +104,11 @@ def _export_openapi(args: argparse.Namespace) -> int:
 
 
 def _retention(args: argparse.Namespace) -> int:
-    from aegis.models import AlertEvent, Event, IncidentEvent, LoginAttempt
+    from aegis.services.retention import purge
 
-    days = args.days or get_settings().event_retention_days
-    cutoff = utcnow() - timedelta(days=days)
     with session_factory()() as db:
-        # Events referenced by alerts or incidents are evidence and are retained.
-        protected = select(AlertEvent.event_id).union(select(IncidentEvent.event_id))
-        result = db.execute(
-            delete(Event).where(Event.occurred_at < cutoff, Event.id.not_in(protected))
-        )
-        db.execute(
-            delete(LoginAttempt).where(LoginAttempt.attempted_at < utcnow() - timedelta(days=1))
-        )
-        db.commit()
-    print(f"deleted {getattr(result, 'rowcount', 0)} events older than {days} days")
+        result = purge(db, args.days)
+    print(f"deleted {result['events']} events older than {result['retention_days']} days")
     return 0
 
 

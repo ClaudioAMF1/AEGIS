@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -54,24 +54,13 @@ impl Default for SenderConfig {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields, default)]
 pub struct Collectors {
     pub process: ProcessCollector,
     pub network: NetworkCollector,
     pub file: FileCollector,
     pub auth: AuthCollector,
-}
-
-impl Default for Collectors {
-    fn default() -> Self {
-        Self {
-            process: ProcessCollector::default(),
-            network: NetworkCollector::default(),
-            file: FileCollector::default(),
-            auth: AuthCollector::default(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -85,7 +74,11 @@ pub struct ProcessCollector {
 
 impl Default for ProcessCollector {
     fn default() -> Self {
-        Self { enabled: true, poll_interval_ms: 250, hash_max_bytes: 0 }
+        Self {
+            enabled: true,
+            poll_interval_ms: 250,
+            hash_max_bytes: 0,
+        }
     }
 }
 
@@ -100,7 +93,11 @@ pub struct NetworkCollector {
 
 impl Default for NetworkCollector {
     fn default() -> Self {
-        Self { enabled: true, poll_interval_ms: 1000, ignore_loopback: true }
+        Self {
+            enabled: true,
+            poll_interval_ms: 1000,
+            ignore_loopback: true,
+        }
     }
 }
 
@@ -189,7 +186,8 @@ impl Config {
             bail!("sender.batch_size must be 1..=500 (API limit)");
         }
         for pattern in &self.privacy.redact_patterns {
-            regex::Regex::new(pattern).with_context(|| format!("invalid redact pattern {pattern}"))?;
+            regex::Regex::new(pattern)
+                .with_context(|| format!("invalid redact pattern {pattern}"))?;
         }
         Ok(())
     }
@@ -206,7 +204,11 @@ impl Config {
 }
 
 fn is_local(url: &str) -> bool {
-    let host = url.trim_start_matches("http://").split(['/', ':']).next().unwrap_or("");
+    let host = url
+        .trim_start_matches("http://")
+        .split(['/', ':'])
+        .next()
+        .unwrap_or("");
     host == "localhost"
         || host.starts_with("127.")
         || host.starts_with("10.")
@@ -237,6 +239,13 @@ mod tests {
         assert!(c.validate().is_err());
         c.api_url = "http://localhost:8000".into();
         c.validate().unwrap();
+    }
+
+    #[test]
+    fn example_config_is_valid() {
+        let example: Config = toml::from_str(include_str!("../packaging/agent.example.toml")).unwrap();
+        example.validate().unwrap();
+        assert_eq!(example.sender.batch_size, 200);
     }
 
     #[test]

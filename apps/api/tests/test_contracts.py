@@ -54,3 +54,21 @@ def test_openapi_document_is_current() -> None:
         "openapi.json is stale: run `aegis export-openapi`"
     )
     assert committed["components"] == current["components"]
+
+
+def test_rust_agent_sample_matches_schema() -> None:
+    """The Rust agent's serialisation must satisfy the same contract (built in CI)."""
+    import os
+    import subprocess
+
+    binary = os.environ.get("AEGIS_AGENT_BIN")
+    if not binary:
+        pytest.skip("AEGIS_AGENT_BIN not set")
+    # Binary path comes from the CI environment, not from user input.
+    output = subprocess.run([binary, "sample"], capture_output=True, check=True, text=True)  # noqa: S603
+    batch = json.loads(output.stdout)
+    jsonschema.validate(batch, json.loads((SCHEMAS / "ace-batch.v1.schema.json").read_text()))
+    categories = {e["category"] for e in batch["events"]}
+    assert categories == {"process", "network", "file", "authentication", "system"}
+    for item in batch["events"]:
+        EventIn.model_validate(item)

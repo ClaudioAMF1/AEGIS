@@ -106,7 +106,10 @@ pub struct EventFactory {
 
 impl EventFactory {
     pub fn new(host: Host, start_seq: u64) -> Self {
-        Self { host, seq: AtomicU64::new(start_seq) }
+        Self {
+            host,
+            seq: AtomicU64::new(start_seq),
+        }
     }
 
     pub fn host(&self) -> &Host {
@@ -154,7 +157,14 @@ mod tests {
 
     #[test]
     fn sequence_is_monotonic_and_ids_unique() {
-        let f = EventFactory::new(Host { hostname: "h".into(), os: None, ip: vec![] }, 10);
+        let f = EventFactory::new(
+            Host {
+                hostname: "h".into(),
+                os: None,
+                ip: vec![],
+            },
+            10,
+        );
         let a = f.event("system", "agent_start", Utc::now());
         let b = f.event("system", "agent_start", Utc::now());
         assert_eq!((a.seq, b.seq), (11, 12));

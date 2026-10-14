@@ -11,6 +11,7 @@ import logging
 import os
 import signal
 import socket
+import time
 import uuid
 
 from sqlalchemy import select
@@ -21,6 +22,7 @@ from aegis.events.broker import BrokerUnavailable, StreamBroker
 from aegis.events.pipeline import run_detection
 from aegis.models import Event
 from aegis.observability import configure_logging, metrics
+from aegis.services.retention import purge
 
 log = logging.getLogger("aegis.worker")
 
@@ -41,7 +43,15 @@ def run_forever() -> None:
     with session_factory()() as db:
         registry.bootstrap(db)
     log.info("detection worker started", extra={"path": consumer})
+    next_retention = time.monotonic() + 60
     while not stopping:
+        if time.monotonic() >= next_retention:
+            next_retention = time.monotonic() + 3600
+            try:
+                with session_factory()() as db:
+                    log.info("retention", extra={"path": str(purge(db))})
+            except Exception:
+                log.exception("retention run failed")
         try:
             messages = broker.read(consumer)
         except BrokerUnavailable:
