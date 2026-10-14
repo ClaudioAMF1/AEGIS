@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// End-to-end tests run against a running stack (API + web). See README → Testes.
+// End-to-end tests run against a running stack (API + web). See docs/development.md (E2E).
 export default defineConfig({
   testDir: "./e2e",
   timeout: 60_000,
