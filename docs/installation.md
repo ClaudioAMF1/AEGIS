@@ -9,10 +9,31 @@ Requisitos: Docker 24+ e Compose v2, ~2 GB de RAM livres.
 
 ```bash
 git clone https://github.com/ClaudioAMF1/AEGIS.git && cd AEGIS
-cp .env.example .env
+./scripts/init-env.sh
 ```
 
-Edite `.env`:
+O script copia `.env.example` para `.env` (permissão `600`) gerando localmente:
+
+- `AEGIS_SECRET_KEY` — chave mestra da aplicação (HMAC dos tokens e criptografia dos segredos MFA);
+- `POSTGRES_PASSWORD` — senha do usuário `aegis` do PostgreSQL. O container do banco é criado
+  com essa senha na primeira subida; não é preciso criar nada antes.
+
+Ambos são apenas valores aleatórios: não existe um lugar para “obtê-los”. Para gerar à mão:
+
+```bash
+python3 -c 'import secrets; print(secrets.token_urlsafe(48))'   # Linux/macOS
+openssl rand -base64 48
+```
+
+```powershell
+[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(48))   # Windows (PowerShell 7)
+```
+
+> A senha do PostgreSQL só é aplicada quando o volume `pgdata` é criado. Se trocar
+> `POSTGRES_PASSWORD` depois, recrie o volume (`docker compose down -v`, apaga os dados) ou altere
+> a senha dentro do banco. Trocar `AEGIS_SECRET_KEY` invalida sessões, tokens de agente e MFA.
+
+Opcionalmente, edite o `.env`:
 
 | Variável | Obrigatória | Descrição |
 |---|---|---|
@@ -22,9 +43,8 @@ Edite `.env`:
 | `AEGIS_ASSISTANT_MODEL` | não | modelo usado pelo analista (padrão do compose: `claude-opus-5-5`) |
 | `AEGIS_INTEL_EXTERNAL_ENABLED`, `AEGIS_ABUSEIPDB_API_KEY` | não | reputação de IPs públicos (cache de 24 h) |
 | `AEGIS_RESPONSE_ALLOW_SELF_APPROVAL` | não | `true` só em laboratório de uma pessoa; com mais de um admin, mantenha `false` |
-| `AEGIS_HTTP_PORT` | não | porta do gateway (padrão 8080, ligada a 127.0.0.1) |
+| `AEGIS_HTTP_PORT` | não | porta do gateway (padrão 8787, ligada a 127.0.0.1) |
 
-Gere segredos com `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`.
 
 ```bash
 docker compose up -d --build          # postgres, redis, migrate, api, worker, web, gateway
@@ -32,13 +52,13 @@ docker compose ps                     # migrate deve terminar com "exited (0)"
 docker compose run --rm api aegis create-user --email voce@lab.local --generate-password
 ```
 
-A senha gerada aparece uma única vez no terminal. Acesse <http://localhost:8080>.
+A senha gerada aparece uma única vez no terminal. Acesse <http://localhost:8787>.
 Para criar outros papéis: `--role analyst` ou `--role viewer` (ou pela tela **Configuração**).
 
 Verificação rápida:
 
 ```bash
-curl -s localhost:8080/api/v1/health    # {"status":"ok", "checks": {"database":"ok","redis":"ok"}, "pipeline_mode":"broker", ...}
+curl -s localhost:8787/api/v1/health    # {"status":"ok", "checks": {"database":"ok","redis":"ok"}, "pipeline_mode":"broker", ...}
 ```
 
 ### Observabilidade
@@ -83,7 +103,7 @@ estável para compilar.
    sudo sh -c 'umask 077; cat > /etc/aegis/agent.token'   # cole o token, Ctrl-D
    ```
 
-3. Em `/etc/aegis/agent.toml`, ajuste `api_url` (ex.: `http://localhost:8080` no mesmo host;
+3. Em `/etc/aegis/agent.toml`, ajuste `api_url` (ex.: `http://localhost:8787` no mesmo host;
    `http://` só é aceito para localhost, redes RFC 1918 e domínios `.local`/`.lab`).
 4. `sudo aegis-agent check --config /etc/aegis/agent.toml` valida a configuração, a leitura do
    arquivo de token e a conectividade com `/api/v1/health` (o token em si é validado no primeiro

@@ -58,7 +58,7 @@ flowchart LR
     end
     A -- "HTTPS · token do agente<br/>lotes ACE v1" --> G
     subgraph Stack["Stack AEGIS (docker compose)"]
-        G[Caddy gateway :8080] --> W[Web · Next.js]
+        G[Caddy gateway :8787] --> W[Web · Next.js]
         G --> API[API · FastAPI]
         API -- persist --> PG[(PostgreSQL)]
         API -- XADD --> R[(Redis Streams)]
@@ -81,17 +81,17 @@ Detalhes em [docs/architecture.md](docs/architecture.md).
 
 Requisitos: Docker 24+ com Compose v2.
 
+Os segredos **não vêm de lugar nenhum**: são valores aleatórios gerados por você na sua máquina
+(o script abaixo faz isso). Ninguém os fornece e eles nunca devem ser commitados.
+
 ```bash
-cp .env.example .env
-# gere segredos fortes e coloque-os no .env:
-python3 -c 'import secrets; print(secrets.token_urlsafe(48))'   # AEGIS_SECRET_KEY
-python3 -c 'import secrets; print(secrets.token_urlsafe(24))'   # POSTGRES_PASSWORD
+./scripts/init-env.sh       # cria o .env com AEGIS_SECRET_KEY e POSTGRES_PASSWORD aleatórios
 
 docker compose up -d --build
 docker compose run --rm api aegis create-user --email voce@lab.local --generate-password
 ```
 
-Abra <http://localhost:8080>, entre com o usuário criado (a senha gerada é exibida uma única vez)
+Abra <http://localhost:8787>, entre com o usuário criado (a senha gerada é exibida uma única vez)
 e, em **Dashboard → Modo demonstração**, execute um cenário.
 
 Observabilidade (Prometheus em `:9090`, Grafana em `:3001`):

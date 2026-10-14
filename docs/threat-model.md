@@ -27,7 +27,7 @@ flowchart LR
         TI[Feeds de intel importados]
     end
     subgraph Z1["Borda"]
-        GW[Caddy :8080<br/>só 127.0.0.1 por padrão]
+        GW[Caddy :8787<br/>só 127.0.0.1 por padrão]
     end
     subgraph Z2["Aplicação"]
         WEB[web]

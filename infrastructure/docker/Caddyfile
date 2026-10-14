@@ -3,7 +3,7 @@
 	admin off
 }
 
-:8080 {
+:8787 {
 	encode gzip
 	header {
 		-Server

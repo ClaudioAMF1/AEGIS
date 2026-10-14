@@ -13,7 +13,7 @@ flowchart TB
         UI[Console Next.js<br/>React 19 · TanStack Query · Zustand]
     end
     subgraph Edge
-        GW[Caddy<br/>origem única :8080]
+        GW[Caddy<br/>origem única :8787]
     end
     subgraph Web["web (Node 22, standalone)"]
         NX[Next.js server<br/>SSR do shell · proxy.ts · CSP]
