@@ -12,6 +12,7 @@ RFC 5737 (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24), so no real third party
 from __future__ import annotations
 
 import copy
+import hashlib
 import random
 import re
 import uuid
@@ -89,7 +90,10 @@ class _Expander:
         self.rng = random.Random(seed)  # noqa: S311 - deterministic synthetic data, not crypto
         self.next_pid = 2000 + self.rng.randint(0, 500)
         self.refs: dict[str, dict[str, Any]] = {}
-        self.uuid_rng = random.Random(seed * 7919)  # noqa: S311
+        # Event ids must be unique across scenarios and across runs (different anchors), yet
+        # reproducible for the same (scenario, anchor, seed): derive the stream from all three.
+        digest = hashlib.sha256(f"{scenario.id}|{start.isoformat()}|{seed}".encode()).digest()
+        self.uuid_rng = random.Random(int.from_bytes(digest[:8], "big"))  # noqa: S311
 
     def _uuid(self) -> str:
         return str(uuid.UUID(int=self.uuid_rng.getrandbits(128), version=4))

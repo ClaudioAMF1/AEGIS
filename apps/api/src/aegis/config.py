@@ -62,6 +62,9 @@ class Settings(BaseSettings):
     alert_suppression_minutes: int = 15
     incident_grouping_minutes: int = 30
 
+    # Response actions: by default the requester cannot approve their own request (four eyes).
+    response_allow_self_approval: bool = False
+
     # AI assistant (optional)
     anthropic_api_key: SecretStr | None = None
     assistant_model: str = "claude-sonnet-5-5"

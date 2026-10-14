@@ -75,3 +75,12 @@ def test_reset_removes_only_synthetic_data(
     assert admin.get("/api/v1/alerts", params={"scope": "demo"}).json()["total"] == 0
     assert admin.get("/api/v1/events").json()["total"] == 1
     assert admin.get("/api/v1/endpoints").json()[0]["hostname"] == "host-a"
+
+
+def test_scenarios_and_reruns_do_not_collide(admin: Api) -> None:
+    first = run(admin, "webshell-miner")
+    other = run(admin, "baseline-benign")
+    again = run(admin, "webshell-miner")
+    assert first["events_sent"] > 0
+    assert other["events_sent"] > 0
+    assert again["events_sent"] == first["events_sent"]

@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/*
+ * AEGIS visual language — derived from the claudio.dev portfolio:
+ * monospace everywhere, hairline borders, olive/sage palette, warm data accents,
+ * terminal title bars and faint scanlines. Three themes: noite (default), fósforo, papel.
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0c0b;
+  --surface: #101210;
+  --raised: #171a16;
+  --text: #d2d0b9;
+  --muted: #929482;
+  --dim: #4d5245;
+  --border: #34392e;
+  --accent: #a5b894;
+  --warm: #cf927d;
+  --plot: #a5b894;
+
+  --sev-critical: #e0786a;
+  --sev-high: #cf927d;
+  --sev-medium: #d3b66f;
+  --sev-low: #a5b894;
+  --sev-info: #7f8a86;
+  --demo: #c9a6e0;
+  --scan: #00000007;
+}
+:root[data-theme="fosforo"] {
+  --bg: #08110c;
+  --surface: #0b1710;
+  --raised: #102319;
+  --text: #b1d6b5;
+  --muted: #7da686;
+  --dim: #345940;
+  --border: #284b34;
+  --accent: #94daa1;
+  --warm: #d9bd7b;
+  --plot: #94daa1;
+  --sev-critical: #ef8a76;
+  --sev-high: #e3a87c;
+  --sev-medium: #d9bd7b;
+  --sev-low: #94daa1;
+  --sev-info: #6f8f78;
+  --demo: #b7a6ec;
+}
+:root[data-theme="papel"] {
+  color-scheme: light;
+  --bg: #eeece2;
+  --surface: #e8e5d9;
+  --raised: #dedbcc;
+  --text: #333a2e;
+  --muted: #636958;
+  --dim: #a5a995;
+  --border: #bbbda9;
+  --accent: #4b6b49;
+  --warm: #9b5344;
+  --plot: #4b6b49;
+  --sev-critical: #a63d2f;
+  --sev-high: #9b5344;
+  --sev-medium: #8a6a1c;
+  --sev-low: #4b6b49;
+  --sev-info: #6b7068;
+  --demo: #6d4f8c;
+  --scan: #00000005;
+}
+
+@theme inline {
+  --color-ground: var(--bg);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-dim: var(--dim);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-warm: var(--warm);
+  --color-critical: var(--sev-critical);
+  --color-high: var(--sev-high);
+  --color-medium: var(--sev-medium);
+  --color-low: var(--sev-low);
+  --color-info: var(--sev-info);
+  --color-demo: var(--demo);
+  --font-mono: var(--font-plex), "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 12px;
+  --animate-blink: blink 1.2s steps(2, end) infinite;
+  --animate-pulse-dot: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@layer base {
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--bg);
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 3px;
+}
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+}
+
+/* --- reusable primitives ----------------------------------------------------- */
+
+@utility eyebrow {
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+@utility scanlines {
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      transparent 0,
+      transparent 3px,
+      var(--scan) 3px,
+      var(--scan) 4px
+    );
+  }
+}
+@utility hairline-grid {
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: -1px -1px;
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+@utility link-underline {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  text-decoration-color: var(--border);
+  &:hover {
+    color: var(--text);
+    text-decoration-color: var(--accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+}

@@ -31,7 +31,11 @@ from aegis.routers import (
     events,
     incidents,
     ingest,
+    intel,
+    reports,
 )
+from aegis.routers import assistant as assistant_router
+from aegis.routers import response as response_actions
 
 log = logging.getLogger("aegis.http")
 
@@ -122,6 +126,10 @@ def create_app() -> FastAPI:
         analytics,
         admin,
         demo,
+        intel,
+        response_actions,
+        reports,
+        assistant_router,
     ):
         app.include_router(module.router, prefix=API_PREFIX)
 
