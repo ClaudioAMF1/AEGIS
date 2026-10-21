@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "AEGIS — Autonomous Cyber Defense Platform: API, ingestion pipeline and detection engine"
 requires-python = ">=3.13"
 dependencies = [
-    "fastapi>=0.143,<0.144",
+    "fastapi>=0.143,<0.147",
     "uvicorn[standard]>=0.54,<0.55",
     "pydantic[email]>=2.14,<3",
     "pydantic-settings>=2.15,<3",
