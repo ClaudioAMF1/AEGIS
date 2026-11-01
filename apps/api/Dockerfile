@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 # AEGIS API / worker image. Build context: repository root (rules and scenarios are bundled).
-FROM python:3.13-slim AS build
+FROM python:3.15-slim AS build
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
 WORKDIR /app
 COPY apps/api/pyproject.toml apps/api/uv.lock ./
@@ -14,7 +14,7 @@ RUN --mount=type=secret,id=extra_ca,required=false \
     if [ -s /run/secrets/extra_ca ]; then export SSL_CERT_FILE=/run/secrets/extra_ca; fi; \
     uv sync --frozen --no-dev
 
-FROM python:3.13-slim
+FROM python:3.15-slim
 RUN useradd --system --uid 10001 --home /app aegis
 WORKDIR /app
 COPY --from=build --chown=aegis:aegis /app /app
